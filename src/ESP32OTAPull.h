@@ -30,6 +30,7 @@ SOFTWARE.
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <WiFi.h>
+#include <StreamUtils.h>
 
 class ESP32OTAPull
 {
@@ -48,27 +49,10 @@ private:
     String CVersion = "";
     bool DowngradesAllowed = false;
 
-    int DownloadJson(const char* URL, String& payload)
-    {
-        HTTPClient http;
-        http.begin(URL);
-
-        // Send HTTP GET request
-        int httpResponseCode = http.GET();
-
-        if (httpResponseCode == 200)
-        {
-            payload = http.getString();
-        }
-
-        // Free resources
-        http.end();
-        return httpResponseCode;
-    }
-
     int DoOTAUpdate(const char* URL, ActionType Action)
     {
         HTTPClient http;
+		http.useHTTP10(true);		
         http.begin(URL);
 
         // Send HTTP GET request
@@ -187,18 +171,46 @@ public:
     int CheckForOTAUpdate(const char* JSON_URL, const char *CurrentVersion, ActionType Action = UPDATE_AND_BOOT)
     {
         CurrentVersion = CurrentVersion == NULL ? "" : CurrentVersion;
+				
+		HTTPClient http;
+		http.useHTTP10(true);		
+		
+		// Send request
+		http.begin(JSON_URL);
+		
+        // Send HTTP GET request
+        int httpResponseCode = http.GET();
+		
+		Serial.print("HTTP Response:");
+		Serial.println(httpResponseCode, DEC);
 
-        // Downloading OTA Json...
-        String Payload;
-        int httpResponseCode = DownloadJson(JSON_URL, Payload);
+/*
         if (httpResponseCode != 200)
-            return httpResponseCode > 0 ? httpResponseCode : HTTP_FAILED;
+        {
+		   return httpResponseCode > 0 ? httpResponseCode : HTTP_FAILED;
+		}
+*/
+		// Get the raw and the decoded stream
+		Stream& rawStream = http.getStream();
+		
+		// Parse response
+		JsonDocument doc;
+		
+		// Parse JSON object (and intercept)
+		ReadLoggingStream loggingStream(rawStream, Serial);
+		DeserializationError error = deserializeJson(doc, loggingStream);		
+		
+		// Parse JSON object
+		//DeserializationError error = deserializeJson(doc, response);
 
-        // Deserialize the JSON file downloaded from user's site
-        DynamicJsonDocument doc(6000);
-        DeserializationError deserialization = deserializeJson(doc, Payload.c_str());
-        if (deserialization != DeserializationError::Ok)
-            return JSON_PROBLEM;
+		// Disconnect
+		http.end();		
+
+		if (error) {
+			Serial.print(F("deserializeJson() failed: "));
+			Serial.println(error.f_str());
+			return JSON_PROBLEM;
+		}
 
         String DeviceName = Device.isEmpty() ? WiFi.macAddress() : Device;
         String BoardName = Board.isEmpty() ? ARDUINO_BOARD : Board;
