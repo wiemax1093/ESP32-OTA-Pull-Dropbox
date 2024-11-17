@@ -25,10 +25,10 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if __has_include("settings.h") // optionally override with values in settings.h
 #include "settings.h"
 #else
-#define JSON_URL   "https://example.com/myimages/Basic-OTA-Example.json" // this is where you'll post your JSON filter file
-#define SSID 	   "<my WiFi SSID>"
-#define PASS       "<my WiFi Password>"
-#define VERSION    "1.0.0" // The current version of this program
+static const char *JSON_URL   "https://example.com/myimages/Basic-OTA-Example.json"; // this is where you'll post your JSON filter file
+static const char *SSID 	   "<my WiFi SSID>";
+static const char *PASS       "<my WiFi Password>";
+static const char *VERSION    "1.0.0"; // The current version of this program
 #endif
 
 
@@ -61,7 +61,7 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   you specified in the JSON file.
 */
 
-void callback(int offset, int totallength);
+void pull_ota_callback(int offset, int totallength)
 
 void setup()
 {
@@ -85,7 +85,7 @@ void setup()
 	// First example: update should NOT occur, because Version string in JSON matches local VERSION value.
 	ESP32OTAPull ota;
 
-	ota.SetCallback(callback);
+	ota.SetCallback(pull_ota_callback);
 	Serial.printf("We are running version %s of the sketch, Board='%s', Device='%s'.\n", VERSION, ARDUINO_BOARD, WiFi.macAddress().c_str());
 	Serial.printf("Checking %s to see if an update is available...\n", JSON_URL);
 	int ret = ota.CheckForOTAUpdate(JSON_URL, VERSION);
@@ -157,7 +157,7 @@ void DisplayInfo()
 	Serial.printf("Post the compiled bin at, e.g., %s\n\n", exampleImageURL);
 }
 
-void callback(int offset, int totallength)
+void pull_ota_callback(int offset, int totallength)
 {
 	Serial.printf("Updating %d of %d (%02d%%)...\n", offset, totallength, 100 * offset / totallength);
 #if defined(LED_BUILTIN) // flicker LED on update
