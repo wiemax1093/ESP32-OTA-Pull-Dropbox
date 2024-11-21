@@ -5,7 +5,7 @@ All rights reserved.
 
 https://github.com/mikalhart/ESP32-OTA-Pull
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files 
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files
 (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify,
 merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is
 furnished to do so, subject to the following conditions:
@@ -25,13 +25,11 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if __has_include("settings.h") // optionally override with values in settings.h
 #include "settings.h"
 #else
-static const char *JSON_URL   "https://example.com/myimages/Basic-OTA-Example.json"; // this is where you'll post your JSON filter file
-static const char *SSID 	   "<my WiFi SSID>";
-static const char *PASS       "<my WiFi Password>";
-static const char *VERSION    "1.0.0"; // The current version of this program
+static const char *JSON_URL = "https://example.com/myimages/Basic-OTA-Example.json"; // this is where you'll post your JSON filter file
+static const char *SSID 	= "<WiFi SSID>";
+static const char *PASS     = "<WiFi Password>";
+static const char *VERSION  = "1.0.0"; // The current version of this program
 #endif
-
-
 
 // Now create a text file called "Basic-OTA-Example.json" that describes the image you are going to post.  Example below.
 // * The "Board" line, if provided, should match the ARDUINO_BOARD string that is predefined for the board you selected
@@ -57,52 +55,11 @@ static const char *VERSION    "1.0.0"; // The current version of this program
 /*
   Post the above file at <URL_JSON>.
 
-  Compile your sketch with "Sketch/Export Compiled Binary", and post the resulting .bin file at the <URL> 
+  Compile your sketch with "Sketch/Export Compiled Binary", and post the resulting .bin file at the <URL>
   you specified in the JSON file.
 */
 
-void pull_ota_callback(int offset, int totallength)
-
-void setup()
-{
-	Serial.begin(115200);
-	delay(2000); // wait for ESP32 Serial to stabilize
-#if defined(LED_BUILTIN)
-	pinMode(LED_BUILTIN, OUTPUT);
-#endif
-
-	DisplayInfo();
-
-	Serial.printf("Connecting to WiFi '%s'...", SSID);
-	WiFi.begin(SSID, PASS);
-	while (!WiFi.isConnected())
-	{
-		Serial.print(".");
-		delay(250);
-	}
-	Serial.printf("\n\n");
-
-	// First example: update should NOT occur, because Version string in JSON matches local VERSION value.
-	ESP32OTAPull ota;
-
-	ota.SetCallback(pull_ota_callback);
-	Serial.printf("We are running version %s of the sketch, Board='%s', Device='%s'.\n", VERSION, ARDUINO_BOARD, WiFi.macAddress().c_str());
-	Serial.printf("Checking %s to see if an update is available...\n", JSON_URL);
-	int ret = ota.CheckForOTAUpdate(JSON_URL, VERSION);
-	Serial.printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, errtext(ret));
-
-	delay(3000);
-
-	// Second example: update *will* happen because we are pretending we have an earlier version
-	Serial.printf("But if we pretend like we're running version 0.0.0, we SHOULD see an update happen.\n");
-	ret = ota.CheckForOTAUpdate(JSON_URL, "0.0.0");
-	Serial.printf("(If the update succeeds, the reboot should prevent us ever getting here.)\n");
-	Serial.printf("CheckOTAForUpdate returned %d (%s)\n\n", ret, errtext(ret));
-}
-
-void loop()
-{
-}
+// ----------------------------------------------------------------------------------------------------- //
 
 const char *errtext(int code)
 {
@@ -131,7 +88,6 @@ const char *errtext(int code)
 	}
 	return "Unknown error";
 }
-
 
 void DisplayInfo()
 {
@@ -166,3 +122,54 @@ void pull_ota_callback(int offset, int totallength)
 	digitalWrite(LED_BUILTIN, status);
 #endif
 }
+
+// ----------------------------------------------------------------------------------------------------- //
+
+void setup()
+{
+	Serial.begin(115200);
+	delay(2000); // wait for ESP32 Serial to stabilize
+#if defined(LED_BUILTIN)
+	pinMode(LED_BUILTIN, OUTPUT);
+#endif
+
+	DisplayInfo();
+
+  Serial.printf("Connecting to WiFi '%s'...", SSID);
+	WiFi.begin(SSID, PASS);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected to WiFi");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+
+	delay(2000); // Give some time to obtain IP_ADDR 'STA_GOT_IP'. Or risk HTTP_ERROR prematurely.
+
+	// First example: update should NOT occur, because Version string in JSON matches local VERSION value.
+	ESP32OTAPull ota;
+
+	//ota.EnableSerialDebug();
+	ota.SetCallback(pull_ota_callback);
+	Serial.printf("We are running version %s of the sketch, Board='%s', Device='%s'.\n", VERSION, ARDUINO_BOARD, WiFi.macAddress().c_str());
+	Serial.printf("Checking %s to see if an update is available...\n", JSON_URL);
+	int ret = ota.CheckForOTAUpdate(JSON_URL, VERSION);
+	Serial.printf("CheckForOTAUpdate returned %d (%s)\n\n", ret, errtext(ret));
+
+	delay(2000);
+
+	// Second example: update *will* happen because we are pretending we have an earlier version
+	Serial.printf("But if we pretend like we're running version 0.0.0, we SHOULD see an update happen.\n");
+	ret = ota.CheckForOTAUpdate(JSON_URL, "0.0.0");
+	Serial.printf("(If the update succeeds, the reboot should prevent us ever getting here.)\n");
+	Serial.printf("CheckOTAForUpdate returned %d (%s)\n\n", ret, errtext(ret));
+}
+
+void loop()
+{
+}
+

@@ -25,10 +25,10 @@ IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 #if __has_include("settings.h") // optionally override with values in settings.h
 #include "settings.h"
 #else
-#define JSON_URL   "https://example.com/myimages/Further-OTA-Examples.json" // this is where you'll post your JSON filter file
-#define SSID 	   "<my WiFi SSID>"
-#define PASS       "<my WiFi Password>"
-#define VERSION    "1.0.0" // The current version of this program
+static const char *JSON_URL = "https://example.com/myimages/Further-OTA-Examples.json"; // this is where you'll post your JSON filter file
+static const char *SSID 	  = "<my WiFi SSID>";
+static const char *PASS     = "<my WiFi Password>";
+static const char *VERSION  = "1.0.0"; // The current version of this program
 #endif
 
 void callback_dots(int offset, int totallength);

@@ -30,7 +30,6 @@ SOFTWARE.
 #include <ArduinoJson.h>
 #include <Update.h>
 #include <WiFi.h>
-#include <StreamUtils.h>
 
 class ESP32OTAPull
 {
@@ -43,11 +42,12 @@ public:
 private:
     void (*Callback)(int offset, int totallength) = NULL;
     ActionType Action = UPDATE_AND_BOOT;
-    String Board = ARDUINO_BOARD;
-    String Device = "";
-    String Config = "";
-    String CVersion = "";
+    String Board      = ARDUINO_BOARD;
+    String Device     = "";
+    String Config     = "";
+    String CVersion   = "";
     bool DowngradesAllowed = false;
+    bool SerialDebug = false;
 
     int DoOTAUpdate(const char* URL, ActionType Action)
     {
@@ -163,6 +163,12 @@ public:
         return *this;
     }
 
+    /// @brief Enable extra debugging output on Serial if required.
+    void EnableSerialDebug()
+    {
+        SerialDebug = true;
+    }
+
     /// @brief The main entry point for OTA Update
     /// @param JSON_URL The URL for the JSON filter file
     /// @param CurrentVersion The version # of the current (i.e. to be replaced) sketch
@@ -171,9 +177,9 @@ public:
     int CheckForOTAUpdate(const char* JSON_URL, const char *CurrentVersion, ActionType Action = UPDATE_AND_BOOT)
     {
         CurrentVersion = CurrentVersion == NULL ? "" : CurrentVersion;
-				
+
 		HTTPClient http;
-		http.useHTTP10(true);		
+		http.useHTTP10(true); // Avoid issues with HTTP Chunked Responses
 		
 		// Send request
 		http.begin(JSON_URL);
@@ -181,15 +187,15 @@ public:
         // Send HTTP GET request
         int httpResponseCode = http.GET();
 		
-		Serial.print("HTTP Response:");
-		Serial.println(httpResponseCode, DEC);
+        if (SerialDebug) {
+            Serial.print("Got HTTP Response: ");
+            Serial.println(httpResponseCode, DEC);
+        }
 
-/*
-        if (httpResponseCode != 200)
-        {
+        if (httpResponseCode != 200) {
 		   return httpResponseCode > 0 ? httpResponseCode : HTTP_FAILED;
 		}
-*/
+
 		// Get the raw and the decoded stream
 		Stream& rawStream = http.getStream();
 		
@@ -197,44 +203,55 @@ public:
 		JsonDocument doc;
 		
 		// Parse JSON object (and intercept)
-		ReadLoggingStream loggingStream(rawStream, Serial);
-		DeserializationError error = deserializeJson(doc, loggingStream);		
+		//ReadLoggingStream loggingStream(rawStream, Serial);
+		//DeserializationError error = deserializeJson(doc, loggingStream);
 		
 		// Parse JSON object
-		//DeserializationError error = deserializeJson(doc, response);
+		DeserializationError error = deserializeJson(doc, rawStream);
 
 		// Disconnect
 		http.end();		
 
 		if (error) {
-			Serial.print(F("deserializeJson() failed: "));
-			Serial.println(error.f_str());
+            if (SerialDebug)  {
+                Serial.print(F("deserializeJson() failed: "));
+                Serial.println(error.f_str());
+            }
 			return JSON_PROBLEM;
 		}
 
-        String DeviceName = Device.isEmpty() ? WiFi.macAddress() : Device;
-        String BoardName = Board.isEmpty() ? ARDUINO_BOARD : Board;
-        String ConfigName = Config.isEmpty() ? "" : Config;
+        String _Board    = Board.isEmpty() ? ARDUINO_BOARD : Board;
+		String _Device   = Device.isEmpty() ? WiFi.macAddress() : Device;
+        String _Config   = Config.isEmpty() ? "" : Config;
         bool foundProfile = false;
+
+        if (SerialDebug) {
+
+            Serial.println("Looking for a configuration that matches:");
+            Serial.print("Board: ");    Serial.println(_Board);
+            Serial.print("Version: ");  Serial.println(CurrentVersion);
+            Serial.print("Device: ");   Serial.println(_Device);
+        }
 
         // Step through the configurations looking for a match
         for (auto config : doc["Configurations"].as<JsonArray>())
         {
-            String CBoard = config["Board"].isNull() ? "" : (const char *)config["Board"];
-            String CDevice = config["Device"].isNull() ? "" : (const char *)config["Device"];
-            CVersion = config["Version"].isNull() ? "" : (const char *)config["Version"];
-            String CConfig = config["Config"].isNull() ? "" : (const char *)config["Config"];
-            if ((CBoard.isEmpty() || CBoard == BoardName) &&
-                (CDevice.isEmpty() || CDevice == DeviceName) &&
-                (CConfig.isEmpty() || CConfig == ConfigName))
+            String CBoard   = config["Board"].isNull() ? "" : (const char *)config["Board"];
+            String CDevice  = config["Device"].isNull() ? "" : (const char *)config["Device"];
+            CVersion        = config["Version"].isNull() ? "" : (const char *)config["Version"];
+            String CConfig  = config["Config"].isNull() ? "" : (const char *)config["Config"];
+
+            if ((CBoard.isEmpty() || CBoard == _Board) &&
+                (CDevice.isEmpty() || CDevice == _Device) &&
+                (CConfig.isEmpty() || CConfig == _Config))
             {
                 if (CVersion.isEmpty() || CVersion > String(CurrentVersion) ||
-                    (DowngradesAllowed && CVersion != String(CurrentVersion)))
+                    (DowngradesAllowed && CVersion != String(CurrentVersion))) {
                     return Action == DONT_DO_UPDATE ? UPDATE_AVAILABLE : DoOTAUpdate(config["URL"], Action);
+                }
                 foundProfile = true;
             }
         }
         return foundProfile ? NO_UPDATE_AVAILABLE : NO_UPDATE_PROFILE_FOUND;
     }
 };
-
