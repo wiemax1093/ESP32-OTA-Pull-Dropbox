@@ -171,9 +171,9 @@ public:
     }
 
     /// @brief Enable extra debugging output on Serial if required.
-    void Enable()
+    void EnableSerialDebug()
     {
-         = true;
+        SerialDebug = true;
     }
 
     /// @brief The main entry point for OTA Update
