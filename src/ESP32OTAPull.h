@@ -195,7 +195,7 @@ public:
         // Send HTTP GET request
         int httpResponseCode = http.GET();
 		
-        if () {
+        if (SerialDebug) {
             Serial.print("Got HTTP Response: ");
             Serial.println(httpResponseCode, DEC);
         }
