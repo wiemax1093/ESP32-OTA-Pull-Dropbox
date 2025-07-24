@@ -181,7 +181,7 @@ public:
     /// @param CurrentVersion The version # of the current (i.e. to be replaced) sketch
     /// @param ActionType The action to be performed.  May be any of DONT_DO_UPDATE, UPDATE_BUT_NO_BOOT, UPDATE_AND_BOOT (default)
     /// @return ErrorCode or HTTP failure code (see enum above)
-    int CheckForOTAUpdate(const char* JSON_URL, const char *CurrentVersion, ActionType Action = UPDATE_AND_BOOT)
+    int CheckForOTAUpdate(const char* JSON_URL, const char *CurrentVersion, ActionType Action = UPDATE_AND_BOOT, const char* token, const char* db_path)
     {
         CurrentVersion = CurrentVersion == NULL ? "" : CurrentVersion;
 
@@ -190,11 +190,16 @@ public:
 		
 		// Send request
 		http.begin(JSON_URL);
-	    	http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS); //Forces redirect following, enables OTA updates from more online sources, like GitHub releases.
+
+	    http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS); //Forces redirect following, enables OTA updates from more online sources, like GitHub releases.
 		
         // Send HTTP GET request
         int httpResponseCode = http.GET();
-		
+		// prepare http header
+        http.addHeader("Authorization", "Bearer " + token);
+        http.addHeader("Dropbox-API-Arg", "{\"path\": \"" + db_path + "\"}");
+        http.addHeader("Content-Type", "application/octet-stream");
+
         if (SerialDebug) {
             Serial.print("Got HTTP Response: ");
             Serial.println(httpResponseCode, DEC);
@@ -208,7 +213,7 @@ public:
 		Stream& rawStream = http.getStream();
 		
 		// Parse response
-		JsonDocument doc;
+		DynamicJsonDocument doc(6000);
 		
 		// Parse JSON object (and intercept)
 		//ReadLoggingStream loggingStream(rawStream, Serial);
