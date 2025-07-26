@@ -49,11 +49,12 @@ private:
     bool DowngradesAllowed = false;
     bool SerialDebug = false;
 
-    int DoOTAUpdate(const char* URL, ActionType Action)
+    int DoOTAUpdate(const char* URL, ActionType Action, const char* api_key)
     {
         HTTPClient http;
 	http.useHTTP10(true);		
         http.begin(URL);
+        http.addHeader("X-SFTPGO-API-KEY", api_key);
     	http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS); //Forces redirect following, enables OTA updates from more online sources, like GitHub releases.
 
         // Send HTTP GET request
@@ -181,7 +182,7 @@ public:
     /// @param CurrentVersion The version # of the current (i.e. to be replaced) sketch
     /// @param ActionType The action to be performed.  May be any of DONT_DO_UPDATE, UPDATE_BUT_NO_BOOT, UPDATE_AND_BOOT (default)
     /// @return ErrorCode or HTTP failure code (see enum above)
-    int CheckForOTAUpdate(const char* JSON_URL, const char *CurrentVersion, ActionType Action = UPDATE_AND_BOOT, const char* token, const char* db_path)
+    int CheckForOTAUpdate(const char* JSON_URL, const char *CurrentVersion, const char* api_key, ActionType Action = UPDATE_AND_BOOT)
     {
         CurrentVersion = CurrentVersion == NULL ? "" : CurrentVersion;
 
@@ -190,15 +191,12 @@ public:
 		
 		// Send request
 		http.begin(JSON_URL);
-
+        http.addHeader("X-SFTPGO-API-KEY", api_key);
 	    http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS); //Forces redirect following, enables OTA updates from more online sources, like GitHub releases.
 		
         // Send HTTP GET request
         int httpResponseCode = http.GET();
-		// prepare http header
-        http.addHeader("Authorization", "Bearer " + token);
-        http.addHeader("Dropbox-API-Arg", "{\"path\": \"" + db_path + "\"}");
-        http.addHeader("Content-Type", "application/octet-stream");
+		
 
         if (SerialDebug) {
             Serial.print("Got HTTP Response: ");
@@ -260,7 +258,7 @@ public:
             {
                 if (CVersion.isEmpty() || CVersion > String(CurrentVersion) ||
                     (DowngradesAllowed && CVersion != String(CurrentVersion))) {
-                    return Action == DONT_DO_UPDATE ? UPDATE_AVAILABLE : DoOTAUpdate(config["URL"], Action);
+                    return Action == DONT_DO_UPDATE ? UPDATE_AVAILABLE : DoOTAUpdate(config["URL"], Action, api_key);
                 }
                 foundProfile = true;
             }
