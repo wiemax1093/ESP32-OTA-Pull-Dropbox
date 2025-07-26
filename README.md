@@ -1,6 +1,7 @@
 # ESP32-OTA-Pull
 
-This is a fork of a fork for the original ESP-OTA-Pull, with some added debugging info and forced redirect following. This allows OTA updates from more sources. In my case, it enabled pulling compiled binaries from GitHub. 
+This is a fork of a fork for the original ESP-OTA-Pull, with added api_key support for usage with SFTPgo.
+To obtain an apikey you need to use the Rest API to generate first an Admin Token, then add over the api a new apikey bound to a user or admin account (needs to be set up before over the web gui)
 
 A new example has been added demonstrating this functionality, where an ESP32, ESP32S2, or ESP32S3 Dev Module will install compiled binaries from the relaese tagged "example". 
 
